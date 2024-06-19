@@ -7,6 +7,7 @@ from torch.nn.init import _calculate_fan_in_and_fan_out
 from timm.models.layers import to_2tuple, trunc_normal_
 
 
+# THis is just normalization layer. It's different I dont need it, will use standart
 class RLN(nn.Module):
 	r"""Revised LayerNorm"""
 	def __init__(self, dim, eps=1e-5, detach_grad=False):
@@ -70,6 +71,7 @@ class Mlp(nn.Module):
 		return self.mlp(x)
 
 
+# standard way - do not have to change
 def window_partition(x, window_size):
 	B, H, W, C = x.shape
 	x = x.view(B, H // window_size, window_size, W // window_size, window_size, C)
@@ -77,6 +79,7 @@ def window_partition(x, window_size):
 	return windows
 
 
+# standard thing as well, do not have to change either
 def window_reverse(windows, window_size, H, W):
 	B = int(windows.shape[0] / (H * W / window_size / window_size))
 	x = windows.view(B, H // window_size, W // window_size, window_size, window_size, -1)
@@ -84,6 +87,7 @@ def window_reverse(windows, window_size, H, W):
 	return x
 
 
+# this is embedding this is very important
 def get_relative_positions(window_size):
 	coords_h = torch.arange(window_size)
 	coords_w = torch.arange(window_size)
@@ -97,7 +101,7 @@ def get_relative_positions(window_size):
 
 	return relative_positions_log
 
-
+# I do not exactly undestand what this is
 class WindowAttention(nn.Module):
 	def __init__(self, dim, window_size, num_heads):
 
@@ -120,9 +124,7 @@ class WindowAttention(nn.Module):
 
 	def forward(self, qkv):
 		B_, N, _ = qkv.shape
-
 		qkv = qkv.reshape(B_, N, 3, self.num_heads, self.dim // self.num_heads).permute(2, 0, 3, 1, 4)
-
 		q, k, v = qkv[0], qkv[1], qkv[2]  # make torchscript happy (cannot use tensor as tuple)
 
 		q = q * self.scale
@@ -141,15 +143,15 @@ class WindowAttention(nn.Module):
 class Attention(nn.Module):
 	def __init__(self, network_depth, dim, num_heads, window_size, shift_size, use_attn=False, conv_type=None):
 		super().__init__()
-		self.dim = dim
-		self.head_dim = int(dim // num_heads)
-		self.num_heads = num_heads
+		self.dim = dim							# dimensions
+		self.head_dim = int(dim // num_heads)	# head_dim
+		self.num_heads = num_heads				# num_heads
 
-		self.window_size = window_size
-		self.shift_size = shift_size
+		self.window_size = window_size			# window_size
+		self.shift_size = shift_size			# shift_size
 
-		self.network_depth = network_depth
-		self.use_attn = use_attn
+		self.network_depth = network_depth		# network depth
+		self.use_attn = use_attn				#
 		self.conv_type = conv_type
 
 		if self.conv_type == 'Conv':
@@ -377,7 +379,7 @@ class SKFusion(nn.Module):
 
 
 class DehazeFormer(nn.Module):
-	def __init__(self, in_chans=3, out_chans=4, window_size=8,
+	def __init__(self, in_chans=3, out_chans=3, window_size=8,
 				 embed_dims=[24, 48, 96, 48, 24],
 				 mlp_ratios=[2., 4., 4., 2., 2.],
 				 depths=[16, 16, 16, 8, 8],
@@ -482,11 +484,7 @@ class DehazeFormer(nn.Module):
 	def forward(self, x):
 		H, W = x.shape[2:]
 		x = self.check_image_size(x)
-
-		feat = self.forward_features(x)
-		K, B = torch.split(feat, (1, 3), dim=1)
-
-		x = K * x - B + x
+		x = self.forward_features(x) + x
 		x = x[:, :, :H, :W]
 		return x
 
